@@ -1,0 +1,28 @@
+services:
+  dispatcher:
+    build: ./dispatcher
+    ports:
+      - "8002:8002"
+    depends_on:
+      - product_service
+      - auth_service
+    networks:
+      - internal
+
+  product_service:
+    build: ./product_service
+    expose:
+      - "8000"
+    networks:
+      - internal
+
+  auth_service:
+    build: ./auth_service
+    expose:
+      - "8001"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
