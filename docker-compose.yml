@@ -6,6 +6,7 @@ services:
     depends_on:
       - product_service
       - auth_service
+      - order_service
     networks:
       - internal
 
@@ -20,6 +21,13 @@ services:
     build: ./auth_service
     expose:
       - "8001"
+    networks:
+      - internal
+
+  order_service:
+    build: ./order_service
+    expose:
+      - "8003"
     networks:
       - internal
 
