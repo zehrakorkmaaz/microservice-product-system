@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from app.db import users_collection
+
 app = FastAPI()
 
 
@@ -15,10 +17,23 @@ class LoginRequest(BaseModel):
     password: str
 
 
-users = [
-    {"id": 1, "username": "admin", "password": "1234", "role": "admin"},
-    {"id": 2, "username": "yusuf", "password": "1234", "role": "user"},
-]
+@app.on_event("startup")
+def seed_default_users():
+    admin_user = users_collection.find_one({"username": "admin"})
+    if not admin_user:
+        users_collection.insert_one({
+            "username": "admin",
+            "password": "1234",
+            "role": "admin"
+        })
+
+    yusuf_user = users_collection.find_one({"username": "yusuf"})
+    if not yusuf_user:
+        users_collection.insert_one({
+            "username": "yusuf",
+            "password": "1234",
+            "role": "user"
+        })
 
 
 @app.get("/")
@@ -28,49 +43,52 @@ def read_root():
 
 @app.get("/auth/users")
 def get_users():
-    safe_users = []
-    for user in users:
-        safe_users.append({
-            "id": user["id"],
+    users = []
+    for user in users_collection.find():
+        users.append({
+            "id": str(user["_id"]),
             "username": user["username"],
             "role": user["role"]
         })
-    return safe_users
+    return users
 
 
 @app.post("/auth/register")
 def register(data: RegisterRequest):
-    for user in users:
-        if user["username"] == data.username:
-            raise HTTPException(status_code=400, detail="username already exists")
+    existing_user = users_collection.find_one({"username": data.username})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="username already exists")
 
-    new_user = {
-        "id": len(users) + 1,
+    result = users_collection.insert_one({
         "username": data.username,
         "password": data.password,
         "role": data.role
-    }
-    users.append(new_user)
+    })
 
     return {
         "message": "user registered successfully",
         "user": {
-            "id": new_user["id"],
-            "username": new_user["username"],
-            "role": new_user["role"]
+            "id": str(result.inserted_id),
+            "username": data.username,
+            "role": data.role
         }
     }
 
 
 @app.post("/auth/login")
 def login(data: LoginRequest):
-    for user in users:
-        if user["username"] == data.username and user["password"] == data.password:
-            token = f"token-{user['username']}-{user['role']}"
-            return {
-                "message": "login successful",
-                "token": token,
-                "role": user["role"]
-            }
+    user = users_collection.find_one({
+        "username": data.username,
+        "password": data.password
+    })
 
-    raise HTTPException(status_code=401, detail="invalid username or password")
+    if not user:
+        raise HTTPException(status_code=401, detail="invalid username or password")
+
+    token = f"token-{user['username']}-{user['role']}"
+
+    return {
+        "message": "login successful",
+        "token": token,
+        "role": user["role"]
+    }

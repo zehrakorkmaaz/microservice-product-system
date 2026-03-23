@@ -7,6 +7,7 @@ services:
       - product_service
       - auth_service
       - order_service
+      - mongo
     networks:
       - internal
 
@@ -31,6 +32,19 @@ services:
     networks:
       - internal
 
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - internal
+
 networks:
   internal:
     driver: bridge
+
+volumes:
+  mongo_data:
