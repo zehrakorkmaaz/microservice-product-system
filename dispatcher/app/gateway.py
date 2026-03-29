@@ -3,9 +3,14 @@ from typing import Optional
 
 
 class HttpForwarder:
-    async def request(self, method: str, url: str, json_data=None):
+    async def request(self, method: str, url: str, json_data=None, headers=None):
         async with httpx.AsyncClient() as client:
-            response = await client.request(method, url, json=json_data)
+            response = await client.request(
+                method,
+                url,
+                json=json_data,
+                headers=headers
+            )
             return response
 
 
@@ -22,15 +27,29 @@ class DispatcherGateway:
             return f"http://order_service:8003{path}"
         return None
 
-    async def forward(self, method: str, path: str, body=None):
+    def resolve_service_name(self, path: str) -> Optional[str]:
+        if path.startswith("/products"):
+            return "product_service"
+        if path.startswith("/auth"):
+            return "auth_service"
+        if path.startswith("/orders"):
+            return "order_service"
+        return None
+
+    async def forward(self, method: str, path: str, body=None, headers=None):
         target = self.resolve_target(path)
 
         if not target:
-            return {"error": "route not found"}, 404
+            return {"error": "route not found"}, 404, None
 
         try:
-            response = await self.forwarder.request(method, target, json_data=body)
-            return response.json(), response.status_code
+            response = await self.forwarder.request(
+                method,
+                target,
+                json_data=body,
+                headers=headers
+            )
+            return response.json(), response.status_code, self.resolve_service_name(path)
 
         except Exception:
-            return {"error": "service unavailable"}, 502
+            return {"error": "service unavailable"}, 502, self.resolve_service_name(path)
