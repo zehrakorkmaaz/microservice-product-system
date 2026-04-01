@@ -2,13 +2,54 @@ import time
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 
 from app.gateway import DispatcherGateway
 from app.logger import RequestLogger
 from app.db import logs_collection
 from app.dashboard import build_dashboard_html
 
-app = FastAPI()
+app = FastAPI(
+    title="Dispatcher API",
+    description="Microservice Gateway with Logging",
+    version="1.0.0",
+    swagger_ui_parameters={"persistAuthorization": True}
+)
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="Dispatcher API",
+        version="1.0.0",
+        description="Microservice Gateway with Logging",
+        routes=app.routes,
+    )
+
+    openapi_schema.setdefault("components", {})
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer"
+        }
+    }
+
+    # Root endpoint hariç tüm endpointlere BearerAuth ekle
+    for path, path_item in openapi_schema["paths"].items():
+        for method_name, operation in path_item.items():
+            if path == "/":
+                continue
+            if method_name.lower() in ["get", "post", "put", "delete", "patch"]:
+                operation["security"] = [{"BearerAuth": []}]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
 gateway = DispatcherGateway()
 request_logger = RequestLogger()
 
@@ -77,6 +118,7 @@ def get_logs(request: Request):
 
     return logs
 
+
 @app.get("/admin/logs/stats")
 def get_log_stats(request: Request):
     is_authorized, username, role = check_auth(request)
@@ -120,6 +162,8 @@ def get_log_stats(request: Request):
         "average_duration_ms": average_duration_ms,
         "service_counts": service_counts
     }
+
+
 @app.get("/admin/dashboard")
 def get_dashboard(request: Request):
     is_authorized, username, role = check_auth(request)
@@ -173,6 +217,7 @@ def get_dashboard(request: Request):
 
     return build_dashboard_html(stats, logs)
 
+
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def dispatch_request(full_path: str, request: Request):
     start_time = time.perf_counter()
@@ -195,7 +240,7 @@ async def dispatch_request(full_path: str, request: Request):
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         error_message = None
-        if status_code >= 400:
+        if status_code >= 400 and isinstance(data, dict):
             error_message = data.get("error") or data.get("detail")
 
         request_logger.log(
@@ -264,7 +309,7 @@ async def dispatch_request(full_path: str, request: Request):
     duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
     error_message = None
-    if status_code >= 400:
+    if status_code >= 400 and isinstance(data, dict):
         error_message = data.get("error") or data.get("detail")
 
     request_logger.log(
