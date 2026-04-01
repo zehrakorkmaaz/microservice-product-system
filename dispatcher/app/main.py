@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.gateway import DispatcherGateway
 from app.logger import RequestLogger
 from app.db import logs_collection
+from app.dashboard import build_dashboard_html
 
 app = FastAPI()
 gateway = DispatcherGateway()
@@ -76,6 +77,101 @@ def get_logs(request: Request):
 
     return logs
 
+@app.get("/admin/logs/stats")
+def get_log_stats(request: Request):
+    is_authorized, username, role = check_auth(request)
+
+    if not is_authorized:
+        return JSONResponse(content={"error": "unauthorized"}, status_code=401)
+
+    if role != "admin":
+        return JSONResponse(content={"error": "forbidden"}, status_code=403)
+
+    total_requests = logs_collection.count_documents({})
+    success_requests = logs_collection.count_documents({"status_code": {"$gte": 200, "$lt": 300}})
+    unauthorized_requests = logs_collection.count_documents({"status_code": 401})
+    forbidden_requests = logs_collection.count_documents({"status_code": 403})
+    server_error_requests = logs_collection.count_documents({"status_code": {"$gte": 500, "$lt": 600}})
+
+    durations = list(logs_collection.find({}, {"duration_ms": 1}))
+    duration_values = []
+
+    for item in durations:
+        value = item.get("duration_ms")
+        if isinstance(value, (int, float)):
+            duration_values.append(value)
+
+    average_duration_ms = 0
+    if duration_values:
+        average_duration_ms = round(sum(duration_values) / len(duration_values), 2)
+
+    service_counts = {
+        "auth_service": logs_collection.count_documents({"target_service": "auth_service"}),
+        "product_service": logs_collection.count_documents({"target_service": "product_service"}),
+        "order_service": logs_collection.count_documents({"target_service": "order_service"})
+    }
+
+    return {
+        "total_requests": total_requests,
+        "success_requests": success_requests,
+        "unauthorized_requests": unauthorized_requests,
+        "forbidden_requests": forbidden_requests,
+        "server_error_requests": server_error_requests,
+        "average_duration_ms": average_duration_ms,
+        "service_counts": service_counts
+    }
+@app.get("/admin/dashboard")
+def get_dashboard(request: Request):
+    is_authorized, username, role = check_auth(request)
+
+    if not is_authorized:
+        return JSONResponse(content={"error": "unauthorized"}, status_code=401)
+
+    if role != "admin":
+        return JSONResponse(content={"error": "forbidden"}, status_code=403)
+
+    total_requests = logs_collection.count_documents({})
+    success_requests = logs_collection.count_documents({"status_code": {"$gte": 200, "$lt": 300}})
+    unauthorized_requests = logs_collection.count_documents({"status_code": 401})
+    forbidden_requests = logs_collection.count_documents({"status_code": 403})
+    server_error_requests = logs_collection.count_documents({"status_code": {"$gte": 500, "$lt": 600}})
+
+    durations = list(logs_collection.find({}, {"duration_ms": 1}))
+    duration_values = []
+
+    for item in durations:
+        value = item.get("duration_ms")
+        if isinstance(value, (int, float)):
+            duration_values.append(value)
+
+    average_duration_ms = 0
+    if duration_values:
+        average_duration_ms = round(sum(duration_values) / len(duration_values), 2)
+
+    stats = {
+        "total_requests": total_requests,
+        "success_requests": success_requests,
+        "unauthorized_requests": unauthorized_requests,
+        "forbidden_requests": forbidden_requests,
+        "server_error_requests": server_error_requests,
+        "average_duration_ms": average_duration_ms
+    }
+
+    logs = []
+    for log in logs_collection.find().sort("timestamp", -1).limit(50):
+        logs.append({
+            "timestamp": log.get("timestamp", ""),
+            "method": log.get("method", ""),
+            "path": log.get("path", ""),
+            "status_code": log.get("status_code", ""),
+            "username": log.get("username", ""),
+            "role": log.get("role", ""),
+            "target_service": log.get("target_service", ""),
+            "duration_ms": log.get("duration_ms", ""),
+            "error_message": log.get("error_message", "")
+        })
+
+    return build_dashboard_html(stats, logs)
 
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
 async def dispatch_request(full_path: str, request: Request):
