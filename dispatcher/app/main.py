@@ -72,8 +72,8 @@ def extract_token_info(request: Request):
     if len(parts) < 3:
         return token, None, None
 
-    username = parts[1]
-    role = parts[2]
+    username = parts[1].strip()
+    role = parts[2].strip()
     return token, username, role
 
 
@@ -273,7 +273,7 @@ async def dispatch_request(full_path: str, request: Request):
 
         return JSONResponse(content={"error": "unauthorized"}, status_code=401)
 
-    if path == "/products" and request.method == "POST":
+    if path.startswith("/products") and request.method in ["POST", "PUT", "DELETE"]:
         if role != "admin":
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
 

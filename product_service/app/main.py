@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from bson import ObjectId
 
 from app.db import products_collection
 
@@ -7,6 +8,11 @@ app = FastAPI()
 
 
 class ProductCreateRequest(BaseModel):
+    name: str
+    price: int
+
+
+class ProductUpdateRequest(BaseModel):
     name: str
     price: int
 
@@ -51,4 +57,49 @@ def create_product(data: ProductCreateRequest):
             "name": data.name,
             "price": data.price
         }
+    }
+
+
+@app.put("/products/{product_id}")
+def update_product(product_id: str, data: ProductUpdateRequest):
+    try:
+        obj_id = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid product id")
+
+    existing_product = products_collection.find_one({"_id": obj_id})
+    if not existing_product:
+        raise HTTPException(status_code=404, detail="product not found")
+
+    products_collection.update_one(
+        {"_id": obj_id},
+        {"$set": {"name": data.name, "price": data.price}}
+    )
+
+    return {
+        "message": "product updated successfully",
+        "product": {
+            "id": product_id,
+            "name": data.name,
+            "price": data.price
+        }
+    }
+
+
+@app.delete("/products/{product_id}")
+def delete_product(product_id: str):
+    try:
+        obj_id = ObjectId(product_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid product id")
+
+    existing_product = products_collection.find_one({"_id": obj_id})
+    if not existing_product:
+        raise HTTPException(status_code=404, detail="product not found")
+
+    products_collection.delete_one({"_id": obj_id})
+
+    return {
+        "message": "product deleted successfully",
+        "deleted_product_id": product_id
     }
