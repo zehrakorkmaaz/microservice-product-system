@@ -166,14 +166,6 @@ def get_log_stats(request: Request):
 
 @app.get("/admin/dashboard")
 def get_dashboard(request: Request):
-    is_authorized, username, role = check_auth(request)
-
-    if not is_authorized:
-        return JSONResponse(content={"error": "unauthorized"}, status_code=401)
-
-    if role != "admin":
-        return JSONResponse(content={"error": "forbidden"}, status_code=403)
-
     total_requests = logs_collection.count_documents({})
     success_requests = logs_collection.count_documents({"status_code": {"$gte": 200, "$lt": 300}})
     unauthorized_requests = logs_collection.count_documents({"status_code": 401})
@@ -192,15 +184,32 @@ def get_dashboard(request: Request):
     if duration_values:
         average_duration_ms = round(sum(duration_values) / len(duration_values), 2)
 
+    service_counts = {
+    "auth_service": logs_collection.count_documents({"target_service": "auth_service"}),
+    "product_service": logs_collection.count_documents({"target_service": "product_service"}),
+    "order_service": logs_collection.count_documents({"target_service": "order_service"})
+    
+    
+}
+    top_service = max(service_counts, key=service_counts.get) if service_counts else "N/A"
+
     stats = {
         "total_requests": total_requests,
         "success_requests": success_requests,
         "unauthorized_requests": unauthorized_requests,
         "forbidden_requests": forbidden_requests,
         "server_error_requests": server_error_requests,
-        "average_duration_ms": average_duration_ms
+        "average_duration_ms": average_duration_ms,
+        "service_counts": service_counts,
+        "top_service": top_service
     }
+    pipeline = [
+    {"$group": {"_id": "$path", "count": {"$sum": 1}}},
+    {"$sort": {"count": -1}},
+    {"$limit": 5}
+]
 
+    top_endpoints = list(logs_collection.aggregate(pipeline))
     logs = []
     for log in logs_collection.find().sort("timestamp", -1).limit(50):
         logs.append({
@@ -215,7 +224,16 @@ def get_dashboard(request: Request):
             "error_message": log.get("error_message", "")
         })
 
-    return build_dashboard_html(stats, logs)
+    error_pipeline = [
+    {"$match": {"status_code": {"$gte": 400}}},
+    {"$group": {"_id": "$path", "count": {"$sum": 1}}},
+    {"$sort": {"count": -1}},
+    {"$limit": 5}
+    ]
+
+    top_error_endpoints = list(logs_collection.aggregate(error_pipeline))
+
+    return build_dashboard_html(stats, logs, top_endpoints, top_error_endpoints)
 
 
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])

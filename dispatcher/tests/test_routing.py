@@ -1,42 +1,52 @@
 import pytest
-import httpx
-from app.gateway import DispatcherGateway, HttpForwarder
-
-
-class FakeForwarder(HttpForwarder):
-    async def request(self, method: str, url: str, headers: dict, body: bytes) -> httpx.Response:
-        # Gerçek servise gitmiyoruz. Sanki gitmiş gibi cevap üretiyoruz.
-        if url.endswith("/products"):
-            return httpx.Response(200, json=[{"id": 1, "name": "Kalem"}])
-        return httpx.Response(404, json={"error": "not found"})
+from app.gateway import DispatcherGateway
 
 
 @pytest.mark.asyncio
-async def test_gateway_resolve_target():
-    gw = DispatcherGateway(routes={"/products": "http://x"}, forwarder=FakeForwarder())
-    assert gw.resolve_target("/products") == "http://x"
-    assert gw.resolve_target("/products/123") == "http://x"
-    assert gw.resolve_target("/nope") is None
+async def test_resolve_target_products():
+    gw = DispatcherGateway()
+    assert gw.resolve_target("/products") == "http://product_service:8000/products"
 
 
 @pytest.mark.asyncio
-async def test_gateway_forward_products():
-    gw = DispatcherGateway(routes={"/products": "http://service"}, forwarder=FakeForwarder())
+async def test_resolve_target_orders():
+    gw = DispatcherGateway()
+    assert gw.resolve_target("/orders") == "http://order_service:8003/orders"
 
-    # FastAPI Request objesi yerine çok basit sahte request benzeri nesne kullanacağız
-    class DummyURL:
-        def __init__(self):
-            self.path = "/products"
-            self.query = ""
 
-    class DummyRequest:
-        method = "GET"
-        url = DummyURL()
-        headers = {}
+@pytest.mark.asyncio
+async def test_resolve_target_auth():
+    gw = DispatcherGateway()
+    assert gw.resolve_target("/auth/login") == "http://auth_service:8001/auth/login"
 
-        async def body(self):
-            return b""
 
-    resp = await gw.forward(DummyRequest(), "http://service")
-    assert resp.status_code == 200
-    assert resp.json() == [{"id": 1, "name": "Kalem"}]
+@pytest.mark.asyncio
+async def test_resolve_target_not_found():
+    gw = DispatcherGateway()
+    assert gw.resolve_target("/unknown") is None
+
+
+
+class FakeForwarder:
+    async def request(self, method, url, json_data=None, headers=None):
+        class FakeResponse:
+            def json(self):
+                return {"message": "ok"}
+
+            status_code = 200
+
+        return FakeResponse()
+
+
+@pytest.mark.asyncio
+async def test_forward_success():
+    gw = DispatcherGateway(forwarder=FakeForwarder())
+
+    data, status_code, service = await gw.forward(
+        "GET",
+        "/products"
+    )
+
+    assert status_code == 200
+    assert data["message"] == "ok"
+    assert service == "product_service"
