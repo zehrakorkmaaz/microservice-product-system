@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from app.db import users_collection
@@ -63,10 +64,16 @@ def check_admin(request: Request):
     token, username, role = extract_token_info(request)
 
     if not token or not username or not role:
-        raise HTTPException(status_code=401, detail="unauthorized")
+        return JSONResponse(
+            content={"error": "unauthorized"},
+            status_code=401
+        )
 
     if role != "admin":
-        raise HTTPException(status_code=403, detail="forbidden")
+        return JSONResponse(
+            content={"error": "forbidden"},
+            status_code=403
+        )
 
     return username
 
@@ -76,9 +83,17 @@ def read_root():
     return {"message": "auth service is up and running!"}
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "auth_service"}
+
+
 @app.get("/auth/users")
 def get_users(request: Request):
-    check_admin(request)
+    admin_check = check_admin(request)
+
+    if isinstance(admin_check, JSONResponse):
+        return admin_check
 
     users = []
     for user in users_collection.find():
@@ -94,7 +109,10 @@ def get_users(request: Request):
 def register(data: RegisterRequest):
     existing_user = users_collection.find_one({"username": data.username})
     if existing_user:
-        raise HTTPException(status_code=400, detail="username already exists")
+        return JSONResponse(
+            content={"error": "username already exists"},
+            status_code=400
+        )
 
     result = users_collection.insert_one({
         "username": data.username,
@@ -120,7 +138,10 @@ def login(data: LoginRequest):
     })
 
     if not user:
-        raise HTTPException(status_code=401, detail="invalid username or password")
+        return JSONResponse(
+            content={"error": "invalid username or password"},
+            status_code=401
+        )
 
     token = f"token-{user['username']}-{user['role']}"
 

@@ -1,7 +1,8 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from bson import ObjectId
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from bson import ObjectId
+
 from app.db import orders_collection
 
 app = FastAPI()
@@ -20,6 +21,11 @@ class OrderUpdateRequest(BaseModel):
 @app.get("/")
 def read_root():
     return {"message": "order service is up and running!"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "order_service"}
 
 
 @app.get("/orders")
@@ -56,11 +62,17 @@ def update_order(order_id: str, data: OrderUpdateRequest):
     try:
         obj_id = ObjectId(order_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="invalid order id")
+        return JSONResponse(
+            content={"error": "invalid order id"},
+            status_code=400
+        )
 
     existing_order = orders_collection.find_one({"_id": obj_id})
     if not existing_order:
-        raise HTTPException(status_code=404, detail="order not found")
+        return JSONResponse(
+            content={"error": "order not found"},
+            status_code=404
+        )
 
     orders_collection.update_one(
         {"_id": obj_id},
@@ -82,11 +94,17 @@ def delete_order(order_id: str):
     try:
         obj_id = ObjectId(order_id)
     except Exception:
-        raise HTTPException(status_code=400, detail="invalid order id")
+        return JSONResponse(
+            content={"error": "invalid order id"},
+            status_code=400
+        )
 
     existing_order = orders_collection.find_one({"_id": obj_id})
     if not existing_order:
-        raise HTTPException(status_code=404, detail="order not found")
+        return JSONResponse(
+            content={"error": "order not found"},
+            status_code=404
+        )
 
     orders_collection.delete_one({"_id": obj_id})
 

@@ -1,0 +1,907 @@
+
+    <html>
+    <head>
+        <title>Dispatcher Logs Dashboard</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 30px;
+                background: #f4f7fb;
+                color: #222;
+            }
+
+            h1 {
+                margin-bottom: 8px;
+                color: #1f3b5b;
+            }
+
+            p {
+                color: #555;
+            }
+
+            .cards {
+                display: flex;
+                gap: 16px;
+                flex-wrap: wrap;
+                margin: 25px 0;
+            }
+
+            .card {
+                background: white;
+                border-radius: 14px;
+                padding: 18px;
+                min-width: 190px;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+                border-left: 5px solid #4f8cff;
+            }
+
+            .card h3 {
+                margin: 0 0 8px 0;
+                font-size: 15px;
+                color: #444;
+            }
+
+            .card p {
+                margin: 0;
+                font-size: 24px;
+                font-weight: bold;
+                color: #111;
+            }
+
+            .section-title {
+                margin: 30px 0 12px 0;
+                color: #1f3b5b;
+            }
+
+            .table-box {
+                background: white;
+                border-radius: 14px;
+                padding: 18px;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+                margin-bottom: 24px;
+                overflow-x: auto;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            th, td {
+                border: 1px solid #e5e7eb;
+                padding: 10px;
+                text-align: left;
+                font-size: 14px;
+            }
+
+            th {
+                background: #eef4ff;
+                color: #1f3b5b;
+            }
+
+            tr:nth-child(even) {
+                background: #fafafa;
+            }
+
+            .chart-container {
+                background: white;
+                border-radius: 14px;
+                padding: 18px;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+                margin-bottom: 24px;
+            }
+
+            .two-column {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+            }
+
+            @media (max-width: 900px) {
+                .two-column {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Dispatcher Logs Dashboard</h1>
+        <p>Son istekler, hata analizi ve servis dağılımı</p>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Total Requests</h3>
+                <p>33463</p>
+            </div>
+            <div class="card">
+                <h3>Success (2xx)</h3>
+                <p>30587</p>
+            </div>
+            <div class="card">
+                <h3>Unauthorized (401)</h3>
+                <p>7</p>
+            </div>
+            <div class="card">
+                <h3>Forbidden (403)</h3>
+                <p>4</p>
+            </div>
+            <div class="card">
+                <h3>Server Errors (5xx)</h3>
+                <p>2860</p>
+            </div>
+            <div class="card">
+                <h3>Avg Duration (ms)</h3>
+                <p>1456.68</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h2 class="section-title">Service Request Distribution</h2>
+            <canvas id="serviceChart"></canvas>
+        </div>
+
+        <div class="two-column">
+            <div class="table-box">
+                <h2 class="section-title">Top Requested Endpoints</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Request Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>/products</td>
+            <td>22563</td>
+        </tr>
+        
+        <tr>
+            <td>/orders</td>
+            <td>9070</td>
+        </tr>
+        
+        <tr>
+            <td>/auth/login</td>
+            <td>1812</td>
+        </tr>
+        
+        <tr>
+            <td>/auth/users</td>
+            <td>5</td>
+        </tr>
+        
+        <tr>
+            <td>/products/69c937d02cb1eaed46b56034</td>
+            <td>3</td>
+        </tr>
+        
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-box">
+                <h2 class="section-title">Top Error Endpoints</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Endpoint</th>
+                            <th>Error Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+        <tr>
+            <td>/products</td>
+            <td>2862</td>
+        </tr>
+        
+        <tr>
+            <td>/auth/users</td>
+            <td>4</td>
+        </tr>
+        
+        <tr>
+            <td>/orders</td>
+            <td>3</td>
+        </tr>
+        
+        <tr>
+            <td>/favicon.ico</td>
+            <td>2</td>
+        </tr>
+        
+        <tr>
+            <td>/products/69c937d02cb1eaed46b56034</td>
+            <td>1</td>
+        </tr>
+        
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="table-box">
+            <h2 class="section-title">Service Request Counts</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Request Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td>auth_service</td>
+            <td>1818</td>
+        </tr>
+        
+        <tr>
+            <td>product_service</td>
+            <td>22567</td>
+        </tr>
+        
+        <tr>
+            <td>order_service</td>
+            <td>9075</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-box">
+            <h2 class="section-title">Recent Logs</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Method</th>
+                        <th>Path</th>
+                        <th>Status</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Service</th>
+                        <th>Duration (ms)</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td>2026-04-03T16:44:24.544496</td>
+            <td>GET</td>
+            <td>/favicon.ico</td>
+            <td>401</td>
+            <td>None</td>
+            <td>None</td>
+            <td>None</td>
+            <td>0.02</td>
+            <td>unauthorized</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:34:26.615859</td>
+            <td>PUT</td>
+            <td>/orders/69cfebdcf8d0b15578dba831</td>
+            <td>403</td>
+            <td>yusuf</td>
+            <td>user</td>
+            <td>order_service</td>
+            <td>0.04</td>
+            <td>forbidden</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:33:32.285389</td>
+            <td>POST</td>
+            <td>/orders</td>
+            <td>200</td>
+            <td>yusuf</td>
+            <td>user</td>
+            <td>order_service</td>
+            <td>36.17</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:33:14.675757</td>
+            <td>POST</td>
+            <td>/auth/login</td>
+            <td>200</td>
+            <td>None</td>
+            <td>None</td>
+            <td>auth_service</td>
+            <td>18.72</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:32:24.881319</td>
+            <td>POST</td>
+            <td>/auth/login</td>
+            <td>200</td>
+            <td>None</td>
+            <td>None</td>
+            <td>auth_service</td>
+            <td>135.94</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:25:34.468399</td>
+            <td>PUT</td>
+            <td>/orders/69cfe9a6fbea725efe93777e</td>
+            <td>200</td>
+            <td>yusuf</td>
+            <td>user</td>
+            <td>order_service</td>
+            <td>44.29</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:24:38.019567</td>
+            <td>PUT</td>
+            <td>/orders/ORDER_ID</td>
+            <td>400</td>
+            <td>yusuf</td>
+            <td>user</td>
+            <td>order_service</td>
+            <td>41.69</td>
+            <td>invalid order id</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:24:06.406678</td>
+            <td>POST</td>
+            <td>/orders</td>
+            <td>200</td>
+            <td>yusuf</td>
+            <td>user</td>
+            <td>order_service</td>
+            <td>115.29</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:19:31.538176</td>
+            <td>POST</td>
+            <td>/auth/login</td>
+            <td>200</td>
+            <td>None</td>
+            <td>None</td>
+            <td>auth_service</td>
+            <td>17.53</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:19:07.387738</td>
+            <td>POST</td>
+            <td>/auth/login</td>
+            <td>200</td>
+            <td>None</td>
+            <td>None</td>
+            <td>auth_service</td>
+            <td>117.63</td>
+            <td>None</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.073244</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5336.7</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.071106</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5350.24</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.068546</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5365.32</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.066442</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5494.33</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.061064</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5511.55</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.059245</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5553.51</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.057098</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5568.23</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.054035</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5597.68</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.051574</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5679.08</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.048849</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5725.39</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.045773</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5783.21</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.043066</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5797.48</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.040079</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5806.03</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.037896</td>
+            <td>POST</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>admin</td>
+            <td>admin</td>
+            <td>product_service</td>
+            <td>5817.75</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.035411</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5306.54</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.032110</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5319.67</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.029604</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5337.63</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.027119</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5351.15</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.025090</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5376.51</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.022604</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5385.67</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.018472</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5415.35</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.015169</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5431.23</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.012368</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5477.48</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.010006</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5513.05</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.007674</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5527.73</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.005509</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5536.47</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.003013</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5578.64</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:12.000278</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5617.65</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.996654</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5605.35</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.994661</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5635.48</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.992287</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5642.58</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.990239</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5649.41</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.987160</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5655.01</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.982883</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5667.37</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.980626</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5683.86</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.977446</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5697.05</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.970438</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5681.75</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.967483</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5696.61</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.964168</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5709.85</td>
+            <td>service unavailable</td>
+        </tr>
+        
+        <tr>
+            <td>2026-04-03T16:00:11.960992</td>
+            <td>GET</td>
+            <td>/products</td>
+            <td>502</td>
+            <td>zehra</td>
+            <td>user</td>
+            <td>product_service</td>
+            <td>5757.11</td>
+            <td>service unavailable</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            const ctx = document.getElementById('serviceChart').getContext('2d');
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['auth_service', 'product_service', 'order_service'],
+                    datasets: [{
+                        label: 'Request Count',
+                        data: [1818, 22567, 9075]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        </script>
+    </body>
+    </html>
+    

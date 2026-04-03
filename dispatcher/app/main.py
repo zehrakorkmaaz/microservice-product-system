@@ -85,12 +85,40 @@ def check_auth(request: Request):
     return True, username, role
 
 
-@app.get("/")
+@app.get("/", tags=["System"], summary="Root endpoint")
 def read_root():
     return {"message": "dispatcher is up and running!"}
 
 
-@app.get("/admin/logs")
+@app.get("/health", tags=["System"], summary="Check dispatcher health")
+def health():
+    return {"status": "ok", "service": "dispatcher"}
+
+
+@app.get("/health/services", tags=["System"], summary="Check all microservices health")
+async def health_services():
+    import httpx
+
+    services = {
+        "auth_service": "http://auth_service:8001/health",
+        "product_service": "http://product_service:8000/health",
+        "order_service": "http://order_service:8003/health"
+    }
+
+    results = {}
+
+    async with httpx.AsyncClient() as client:
+        for name, url in services.items():
+            try:
+                resp = await client.get(url)
+                results[name] = resp.json()
+            except Exception:
+                results[name] = {"status": "down"}
+
+    return results
+
+
+@app.get("/admin/logs", tags=["Admin"], summary="Get recent logs")
 def get_logs(request: Request):
     is_authorized, username, role = check_auth(request)
 
@@ -118,7 +146,7 @@ def get_logs(request: Request):
     return logs
 
 
-@app.get("/admin/logs/stats")
+@app.get("/admin/logs/stats", tags=["Admin"], summary="Get log statistics")
 def get_log_stats(request: Request):
     is_authorized, username, role = check_auth(request)
 
@@ -163,7 +191,7 @@ def get_log_stats(request: Request):
     }
 
 
-@app.get("/admin/dashboard")
+@app.get("/admin/dashboard", tags=["Admin"], summary="Open HTML dashboard")
 def get_dashboard(request: Request):
     is_authorized, username, role = check_auth(request)
 
@@ -210,12 +238,20 @@ def get_dashboard(request: Request):
         "top_service": top_service
     }
 
-    pipeline = [
+    endpoint_pipeline = [
         {"$group": {"_id": "$path", "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
         {"$limit": 5}
     ]
-    top_endpoints = list(logs_collection.aggregate(pipeline))
+    top_endpoints = list(logs_collection.aggregate(endpoint_pipeline))
+
+    error_pipeline = [
+        {"$match": {"status_code": {"$gte": 400}}},
+        {"$group": {"_id": "$path", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5}
+    ]
+    top_error_endpoints = list(logs_collection.aggregate(error_pipeline))
 
     logs = []
     for log in logs_collection.find().sort("timestamp", -1).limit(50):
@@ -231,23 +267,22 @@ def get_dashboard(request: Request):
             "error_message": log.get("error_message", "")
         })
 
-    error_pipeline = [
-        {"$match": {"status_code": {"$gte": 400}}},
-        {"$group": {"_id": "$path", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": 5}
-    ]
-    top_error_endpoints = list(logs_collection.aggregate(error_pipeline))
-
     return build_dashboard_html(stats, logs, top_endpoints, top_error_endpoints)
 
 
-@app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE"])
+@app.api_route(
+    "/{full_path:path}",
+    methods=["GET", "POST", "PUT", "DELETE"],
+    tags=["Gateway"],
+    summary="Forward requests to microservices"
+)
 async def dispatch_request(full_path: str, request: Request):
     start_time = time.perf_counter()
-
     path = "/" + full_path
     token, username, role = extract_token_info(request)
+
+
+
 
     if path.startswith("/auth"):
         body = None
@@ -256,8 +291,13 @@ async def dispatch_request(full_path: str, request: Request):
 
         forwarded_headers = {}
         auth_header = request.headers.get("Authorization")
+        content_type = request.headers.get("Content-Type")
+
         if auth_header:
             forwarded_headers["Authorization"] = auth_header
+
+        if content_type:
+            forwarded_headers["Content-Type"] = content_type
 
         data, status_code, target_service = await gateway.forward(
             request.method,
@@ -285,6 +325,7 @@ async def dispatch_request(full_path: str, request: Request):
 
         return JSONResponse(content=data, status_code=status_code)
 
+    # AUTH CHECK
     is_authorized, username, role = check_auth(request)
     if not is_authorized:
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
@@ -302,6 +343,7 @@ async def dispatch_request(full_path: str, request: Request):
 
         return JSONResponse(content={"error": "unauthorized"}, status_code=401)
 
+    # PRODUCT AUTHORIZATION
     if path.startswith("/products") and request.method in ["POST", "PUT", "DELETE"]:
         if role != "admin":
             duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
@@ -319,14 +361,37 @@ async def dispatch_request(full_path: str, request: Request):
 
             return JSONResponse(content={"error": "forbidden"}, status_code=403)
 
+    # ORDER AUTHORIZATION
+    if path.startswith("/orders") and request.method in ["PUT", "DELETE"]:
+        if role != "admin":
+            duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            request_logger.log(
+                method=request.method,
+                path=path,
+                status_code=403,
+                username=username,
+                role=role,
+                target_service="order_service",
+                error_message="forbidden",
+                duration_ms=duration_ms
+            )
+
+            return JSONResponse(content={"error": "forbidden"}, status_code=403)
+
     body = None
     if request.method in ["POST", "PUT"]:
         body = await request.json()
 
     forwarded_headers = {}
     auth_header = request.headers.get("Authorization")
+    content_type = request.headers.get("Content-Type")
+
     if auth_header:
         forwarded_headers["Authorization"] = auth_header
+
+    if content_type:
+        forwarded_headers["Content-Type"] = content_type
 
     data, status_code, target_service = await gateway.forward(
         request.method,

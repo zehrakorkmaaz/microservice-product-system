@@ -30,6 +30,10 @@ def seed_default_products():
 def read_root():
     return {"message": "product service is up and running!"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "product_service"}
+
 
 @app.get("/products")
 def get_products():
