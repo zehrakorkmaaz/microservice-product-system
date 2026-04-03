@@ -1,20 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from bson import ObjectId
-
+from pydantic import BaseModel, Field
 from app.db import orders_collection
 
 app = FastAPI()
 
 
 class OrderCreateRequest(BaseModel):
-    product_name: str
-    quantity: int
+    product_name: str = Field(min_length=2)
+    quantity: int = Field(gt=0)
 
 
 class OrderUpdateRequest(BaseModel):
-    product_name: str
-    quantity: int
+    product_name: str = Field(min_length=2)
+    quantity: int = Field(gt=0)
 
 
 @app.get("/")

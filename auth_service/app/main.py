@@ -1,5 +1,5 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, Field
 
 from app.db import users_collection
 
@@ -7,9 +7,8 @@ app = FastAPI()
 
 
 class RegisterRequest(BaseModel):
-    username: str
-    password: str
-    role: str
+    username: str = Field(min_length=3, max_length=30)
+    password: str = Field(min_length=4, max_length=50)
 
 
 class LoginRequest(BaseModel):
@@ -36,13 +35,51 @@ def seed_default_users():
         })
 
 
+def extract_token_info(request: Request):
+    auth_header = request.headers.get("Authorization")
+
+    if not auth_header:
+        return None, None, None
+
+    if not auth_header.startswith("Bearer "):
+        return None, None, None
+
+    token = auth_header.replace("Bearer ", "").strip()
+
+    if not token.startswith("token-"):
+        return None, None, None
+
+    parts = token.split("-")
+    if len(parts) < 3:
+        return None, None, None
+
+    username = parts[1].strip()
+    role = parts[2].strip()
+
+    return token, username, role
+
+
+def check_admin(request: Request):
+    token, username, role = extract_token_info(request)
+
+    if not token or not username or not role:
+        raise HTTPException(status_code=401, detail="unauthorized")
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    return username
+
+
 @app.get("/")
 def read_root():
     return {"message": "auth service is up and running!"}
 
 
 @app.get("/auth/users")
-def get_users():
+def get_users(request: Request):
+    check_admin(request)
+
     users = []
     for user in users_collection.find():
         users.append({
@@ -62,7 +99,7 @@ def register(data: RegisterRequest):
     result = users_collection.insert_one({
         "username": data.username,
         "password": data.password,
-        "role": data.role
+        "role": "user"
     })
 
     return {
@@ -70,7 +107,7 @@ def register(data: RegisterRequest):
         "user": {
             "id": str(result.inserted_id),
             "username": data.username,
-            "role": data.role
+            "role": "user"
         }
     }
 

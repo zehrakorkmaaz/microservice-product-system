@@ -36,7 +36,6 @@ def custom_openapi():
         }
     }
 
-    # Root endpoint hariç tüm endpointlere BearerAuth ekle
     for path, path_item in openapi_schema["paths"].items():
         for method_name, operation in path_item.items():
             if path == "/":
@@ -166,6 +165,14 @@ def get_log_stats(request: Request):
 
 @app.get("/admin/dashboard")
 def get_dashboard(request: Request):
+    is_authorized, username, role = check_auth(request)
+
+    if not is_authorized:
+        return JSONResponse(content={"error": "unauthorized"}, status_code=401)
+
+    if role != "admin":
+        return JSONResponse(content={"error": "forbidden"}, status_code=403)
+
     total_requests = logs_collection.count_documents({})
     success_requests = logs_collection.count_documents({"status_code": {"$gte": 200, "$lt": 300}})
     unauthorized_requests = logs_collection.count_documents({"status_code": 401})
@@ -185,12 +192,11 @@ def get_dashboard(request: Request):
         average_duration_ms = round(sum(duration_values) / len(duration_values), 2)
 
     service_counts = {
-    "auth_service": logs_collection.count_documents({"target_service": "auth_service"}),
-    "product_service": logs_collection.count_documents({"target_service": "product_service"}),
-    "order_service": logs_collection.count_documents({"target_service": "order_service"})
-    
-    
-}
+        "auth_service": logs_collection.count_documents({"target_service": "auth_service"}),
+        "product_service": logs_collection.count_documents({"target_service": "product_service"}),
+        "order_service": logs_collection.count_documents({"target_service": "order_service"})
+    }
+
     top_service = max(service_counts, key=service_counts.get) if service_counts else "N/A"
 
     stats = {
@@ -203,13 +209,14 @@ def get_dashboard(request: Request):
         "service_counts": service_counts,
         "top_service": top_service
     }
-    pipeline = [
-    {"$group": {"_id": "$path", "count": {"$sum": 1}}},
-    {"$sort": {"count": -1}},
-    {"$limit": 5}
-]
 
+    pipeline = [
+        {"$group": {"_id": "$path", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5}
+    ]
     top_endpoints = list(logs_collection.aggregate(pipeline))
+
     logs = []
     for log in logs_collection.find().sort("timestamp", -1).limit(50):
         logs.append({
@@ -225,12 +232,11 @@ def get_dashboard(request: Request):
         })
 
     error_pipeline = [
-    {"$match": {"status_code": {"$gte": 400}}},
-    {"$group": {"_id": "$path", "count": {"$sum": 1}}},
-    {"$sort": {"count": -1}},
-    {"$limit": 5}
+        {"$match": {"status_code": {"$gte": 400}}},
+        {"$group": {"_id": "$path", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+        {"$limit": 5}
     ]
-
     top_error_endpoints = list(logs_collection.aggregate(error_pipeline))
 
     return build_dashboard_html(stats, logs, top_endpoints, top_error_endpoints)
@@ -248,11 +254,16 @@ async def dispatch_request(full_path: str, request: Request):
         if request.method in ["POST", "PUT"]:
             body = await request.json()
 
+        forwarded_headers = {}
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            forwarded_headers["Authorization"] = auth_header
+
         data, status_code, target_service = await gateway.forward(
             request.method,
             path,
             body,
-            headers={}
+            headers=forwarded_headers
         )
 
         duration_ms = round((time.perf_counter() - start_time) * 1000, 2)
